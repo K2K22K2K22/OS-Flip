@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name="os-flip",
-    version="1.0.3",
+    version="1.0.5",
     description="Cross-platform boot OS selector for Linux, Windows, and macOS",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="AK",
-    author_email="herogupta626@email.com",
-    url="https://github.com/AKris15/OS-Flip",
+    author_email="ak2k22k2k22@gmail.com",
+    url="https://github.com/K2K22K2K22/OS-Flip",
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
