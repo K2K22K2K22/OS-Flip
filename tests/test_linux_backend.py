@@ -350,3 +350,24 @@ def test_saved_default_is_not_overwritten_when_the_entry_is_unknown(tmp_path):
 
     assert backend.current_default() is None
     assert default_config.read_text() == "GRUB_DEFAULT=saved\n"
+
+
+def test_the_last_default_setting_is_the_one_that_counts(tmp_path):
+    backend, default_config, _ = build_backend(
+        tmp_path, config_text='GRUB_DEFAULT=0\nGRUB_DEFAULT="gnulinux-simple-old"\n'
+    )
+
+    backend._write_setting(default_config, "GRUB_DEFAULT", "gnulinux-simple-new")
+
+    content = default_config.read_text()
+    assert content.count("GRUB_DEFAULT=") == 2
+    assert content.endswith('GRUB_DEFAULT="gnulinux-simple-new"\n')
+
+
+def test_a_path_with_identifiers_resolves_to_the_entry(tmp_path):
+    backend, _, _ = build_backend(tmp_path)
+
+    resolved = backend._resolve("gnulinux-advanced-6b1c2d3e>gnulinux-6.8.0-31-generic-6b1c2d3e")
+
+    assert resolved is not None
+    assert resolved.title.endswith("6.8.0-31-generic")

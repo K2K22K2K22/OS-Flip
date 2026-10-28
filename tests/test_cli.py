@@ -232,3 +232,27 @@ def test_no_color_option_disables_ansi_codes(monkeypatch, capsys):
     cli.main(["--list", "--no-color"])
 
     assert "\033[" not in capsys.readouterr().out
+
+
+def test_reboot_flag_also_reboots_after_a_permanent_change(backend, monkeypatch):
+    called = []
+    monkeypatch.setattr(
+        cli.power,
+        "request_reboot",
+        lambda *args, **kwargs: called.append(True) or OperationResult(True, "reboot requested"),
+    )
+    monkeypatch.setattr(cli, "_is_privileged", lambda backend: True)
+
+    exit_code = cli.main(["--set-default", "gnulinux-simple-1", "--reboot"])
+
+    assert exit_code == 0
+    assert called == [True]
+
+
+def test_unsupported_operation_is_explained(backend, monkeypatch, capsys):
+    backend.capabilities = lambda: Capabilities(can_set_next_boot=False)
+
+    exit_code = cli.main(["--next-boot", "gnulinux-simple-1"])
+
+    assert exit_code == 1
+    assert "one time boot is not available" in capsys.readouterr().err

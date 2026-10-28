@@ -279,7 +279,12 @@ class LinuxBackend(BootBackend):
         if ">" in spec:
             parts = _split_path(spec)
             for target in targets:
-                if list(target.path) + [target.title] == parts:
+                titles = [*target.path, target.title]
+                identifiers = [
+                    identifier or title
+                    for identifier, title in zip([*target.path_ids, target.identifier], titles)
+                ]
+                if titles == parts or identifiers == parts:
                     return target
             return None
         matches = [target for target in targets if target.identifier == spec]
@@ -574,16 +579,16 @@ class LinuxBackend(BootBackend):
         original = config.read_text(encoding="utf-8")
         lines = original.splitlines(keepends=True)
         replacement = f'{name}="{value}"\n'
-        replaced = False
+        last = None
         for index, line in enumerate(lines):
             if line.strip().startswith(name + "="):
-                lines[index] = replacement
-                replaced = True
-                break
-        if not replaced:
+                last = index
+        if last is None:
             if lines and not lines[-1].endswith("\n"):
                 lines[-1] += "\n"
             lines.append(replacement)
+        else:
+            lines[last] = replacement
         atomic_write(config, "".join(lines))
 
     def _command_hint(self) -> str:

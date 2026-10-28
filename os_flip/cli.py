@@ -122,6 +122,12 @@ def _print_targets(backend: BootBackend, targets: list[BootTarget]) -> None:
 
 
 def _operation(backend: BootBackend, operation: str, selector: str, arguments) -> int:
+    label = "set default" if operation == "set_default" else "one time boot"
+    reason = backend.capabilities().reason(label)
+    if reason:
+        ui.error(reason)
+        return EXIT_ERROR
+
     targets = backend.list_targets()
     target = resolve_target(targets, selector)
     action = getattr(backend, operation)
@@ -139,7 +145,7 @@ def _operation(backend: BootBackend, operation: str, selector: str, arguments) -
     _print_result(result)
     if not result.ok:
         return EXIT_ERROR
-    if result.reboot_required and arguments.reboot:
+    if arguments.reboot:
         return _reboot(backend)
     if result.reboot_required:
         ui.info("a reboot is required before the new selection is used")
@@ -260,6 +266,12 @@ def menu(backend: BootBackend) -> int:
             return _menu_os_prober(backend)
         else:
             ui.error("invalid option")
+            continue
+
+        label = "set default" if operation == "set_default" else "one time boot"
+        reason = backend.capabilities().reason(label)
+        if reason:
+            ui.error(reason)
             continue
 
         target = _ask_target(targets)
