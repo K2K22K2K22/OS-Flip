@@ -248,6 +248,7 @@ def test_missing_grub_configuration_is_explained(tmp_path):
     assert "no GRUB configuration" in str(error.value)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="file modes are not POSIX permissions on Windows")
 def test_atomic_write_keeps_the_mode_of_the_file(tmp_path):
     target = tmp_path / "grub-default"
     target.write_text("old\n", encoding="utf-8")

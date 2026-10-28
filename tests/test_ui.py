@@ -72,6 +72,7 @@ def test_macos_reboot_command(monkeypatch):
 
 def test_reboot_request_is_only_issued_when_asked(monkeypatch):
     monkeypatch.setattr(power.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(power.shutil, "which", lambda name: "/usr/bin/systemctl")
     runner = FakeRunner()
 
     result = power.request_reboot(runner)
@@ -82,6 +83,7 @@ def test_reboot_request_is_only_issued_when_asked(monkeypatch):
 
 def test_failed_reboot_request_is_reported(monkeypatch):
     monkeypatch.setattr(power.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(power.shutil, "which", lambda name: "/usr/bin/systemctl")
     runner = FakeRunner(
         {"systemctl": completed(["systemctl", "reboot"], returncode=1, stderr="denied")}
     )
