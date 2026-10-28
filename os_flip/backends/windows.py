@@ -13,7 +13,7 @@ import os
 import re
 import shutil
 import subprocess
-from typing import Callable, Dict, List, Optional
+from typing import Callable
 
 from ..model import (
     BootError,
@@ -33,10 +33,10 @@ FIRMWARE_NOTE = (
 )
 
 
-def parse_bcd_output(text: str) -> List[Dict[str, str]]:
+def parse_bcd_output(text: str) -> list[dict[str, str]]:
     """Split ``bcdedit /enum`` output into blocks of key and value pairs."""
-    blocks: List[Dict[str, str]] = []
-    current: Dict[str, str] = {}
+    blocks: list[dict[str, str]] = []
+    current: dict[str, str] = {}
     for line in text.splitlines():
         if not line.strip():
             if current:
@@ -54,7 +54,7 @@ def parse_bcd_output(text: str) -> List[Dict[str, str]]:
     return blocks
 
 
-def parse_bcd_identifier(value: str) -> Optional[str]:
+def parse_bcd_identifier(value: str) -> str | None:
     value = value.strip()
     if not value:
         return None
@@ -71,9 +71,9 @@ class WindowsBackend(BootBackend):
 
     def __init__(
         self,
-        runner: Optional[Runner] = None,
-        which: Callable[[str], Optional[str]] = shutil.which,
-        is_admin: Optional[Callable[[], bool]] = None,
+        runner: Runner | None = None,
+        which: Callable[[str], str | None] = shutil.which,
+        is_admin: Callable[[], bool] | None = None,
     ) -> None:
         self._run = runner or subprocess.run
         self._which = which
@@ -91,7 +91,8 @@ class WindowsBackend(BootBackend):
             write_requires_root=True,
             limitations=(
                 "BCDEdit needs an elevated Administrator shell, also for reading the store.",
-                "Firmware entries are listed but never selected, firmware boot order is managed in setup.",
+                "Firmware entries are listed but never selected, "
+                "firmware boot order is managed in setup.",
                 "One time boots use the boot sequence of the Windows Boot Manager.",
             ),
         )
@@ -114,11 +115,12 @@ class WindowsBackend(BootBackend):
 
     # reading ---------------------------------------------------------------
 
-    def _bcdedit(self, arguments: List[str]) -> str:
+    def _bcdedit(self, arguments: list[str]) -> str:
         command = self._which("bcdedit")
         if not command:
             raise BootError(
-                "bcdedit was not found, it ships with Windows and is required to read or change boot entries"
+                "bcdedit was not found, it ships with Windows "
+                "and is required to read or change boot entries"
             )
         completed = self._run([command, *arguments], check=False, capture_output=True, text=True)
         if completed.returncode != 0:
@@ -126,9 +128,9 @@ class WindowsBackend(BootBackend):
             raise BootError(f"bcdedit {' '.join(arguments)} failed: {detail or 'unknown error'}")
         return completed.stdout
 
-    def list_targets(self) -> List[BootTarget]:
+    def list_targets(self) -> list[BootTarget]:
         self._require_admin("reading the boot configuration")
-        targets: List[BootTarget] = []
+        targets: list[BootTarget] = []
 
         for block in parse_bcd_output(self._bcdedit(["/enum", "OSLOADER"])):
             identifier = parse_bcd_identifier(block.get("identifier", ""))
@@ -181,7 +183,7 @@ class WindowsBackend(BootBackend):
         except BootError:
             return ""
 
-    def current_default(self) -> Optional[BootTarget]:
+    def current_default(self) -> BootTarget | None:
         self._require_admin("reading the current default")
         blocks = parse_bcd_output(self._bcdedit(["/enum", "BOOTMGR"]))
         for block in blocks:
@@ -191,7 +193,12 @@ class WindowsBackend(BootBackend):
             for target in self.list_targets():
                 if target.identifier == default:
                     return target
-            return BootTarget(title=default, identifier=default, kind="os", source="bcdedit /enum BOOTMGR")
+            return BootTarget(
+                title=default,
+                identifier=default,
+                kind="os",
+                source="bcdedit /enum BOOTMGR",
+            )
         return None
 
     # writing ---------------------------------------------------------------
@@ -204,7 +211,7 @@ class WindowsBackend(BootBackend):
 
     def _run_bcd(
         self,
-        arguments: List[str],
+        arguments: list[str],
         target: BootTarget,
         dry_run: bool,
         operation: str,
@@ -243,7 +250,11 @@ class WindowsBackend(BootBackend):
             return OperationResult(
                 False,
                 f"could not set the {operation}",
-                details=(f"command: {' '.join(full)}", f"exit code: {completed.returncode}", detail),
+                details=(
+                    f"command: {' '.join(full)}",
+                    f"exit code: {completed.returncode}",
+                    detail,
+                ),
             )
         reboot_required = arguments[0] == "/bootsequence"
         message = f"{operation} set to {target.display_path}"

@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from dataclasses import replace
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable
 
 from ..model import (
     BootError,
@@ -34,15 +34,15 @@ APPLE_SILICON = "apple_silicon"
 INTEL = "intel"
 
 
-def parse_startup_disks(output: str) -> List[BootTarget]:
+def parse_startup_disks(output: str) -> list[BootTarget]:
     """Read the output of ``systemsetup -liststartupdisks``.
 
     The command prints a volume name and, indented below it, the path of the
     startup disk. Both forms are accepted.
     """
-    targets: List[BootTarget] = []
-    name: Optional[str] = None
-    path: Optional[str] = None
+    targets: list[BootTarget] = []
+    name: str | None = None
+    path: str | None = None
 
     def flush() -> None:
         nonlocal name, path
@@ -58,7 +58,11 @@ def parse_startup_disks(output: str) -> List[BootTarget]:
                     kind="os",
                     source="systemsetup -liststartupdisks",
                     selectable=bool(path),
-                    note="" if path else "the startup disk path was not reported, selection is not possible",
+                    note=(
+                        ""
+                        if path
+                        else "the startup disk path was not reported, selection is not possible"
+                    ),
                 )
             )
         name = None
@@ -81,7 +85,7 @@ def parse_startup_disks(output: str) -> List[BootTarget]:
     return targets
 
 
-def parse_current_disk(output: str) -> Optional[str]:
+def parse_current_disk(output: str) -> str | None:
     for line in output.splitlines():
         if ":" in line:
             return line.split(":", 1)[1].strip() or None
@@ -96,11 +100,11 @@ class MacOSBackend(BootBackend):
 
     def __init__(
         self,
-        runner: Optional[Runner] = None,
-        which: Callable[[str], Optional[str]] = shutil.which,
-        machine: Optional[Callable[[], str]] = None,
-        username: Optional[str] = None,
-        is_root: Optional[Callable[[], bool]] = None,
+        runner: Runner | None = None,
+        which: Callable[[str], str | None] = shutil.which,
+        machine: Callable[[], str] | None = None,
+        username: str | None = None,
+        is_root: Callable[[], bool] | None = None,
     ) -> None:
         self._run = runner or subprocess.run
         self._which = which
@@ -163,19 +167,22 @@ class MacOSBackend(BootBackend):
 
     # reading ---------------------------------------------------------------
 
-    def _systemsetup(self, arguments: List[str]) -> str:
+    def _systemsetup(self, arguments: list[str]) -> str:
         command = self._which("systemsetup")
         if not command:
             raise BootError(
-                "systemsetup was not found, it is part of macOS and is required to read or change the startup disk"
+                "systemsetup was not found, it is part of macOS "
+                "and is required to read or change the startup disk"
             )
         completed = self._run([command, *arguments], check=False, capture_output=True, text=True)
         if completed.returncode != 0:
             detail = (completed.stderr or completed.stdout or "").strip()
-            raise BootError(f"systemsetup {' '.join(arguments)} failed: {detail or 'unknown error'}")
+            raise BootError(
+                f"systemsetup {' '.join(arguments)} failed: {detail or 'unknown error'}"
+            )
         return completed.stdout
 
-    def list_targets(self) -> List[BootTarget]:
+    def list_targets(self) -> list[BootTarget]:
         self._require_root("reading the startup disks")
         targets = parse_startup_disks(self._systemsetup(["-liststartupdisks"]))
         return [
@@ -188,7 +195,7 @@ class MacOSBackend(BootBackend):
     def _is_macos_volume(self, mount_point: Path) -> bool:
         return (mount_point / "System/Library/CoreServices").is_dir()
 
-    def current_default(self) -> Optional[BootTarget]:
+    def current_default(self) -> BootTarget | None:
         self._require_root("reading the current startup disk")
         current = parse_current_disk(self._systemsetup(["-getstartupdisk"]))
         if not current:
@@ -198,7 +205,12 @@ class MacOSBackend(BootBackend):
                 return target
             if target.identifier and Path(target.identifier).name == current:
                 return target
-        return BootTarget(title=current, identifier=current, kind="os", source="systemsetup -getstartupdisk")
+        return BootTarget(
+            title=current,
+            identifier=current,
+            kind="os",
+            source="systemsetup -getstartupdisk",
+        )
 
     # writing ---------------------------------------------------------------
 
@@ -230,7 +242,8 @@ class MacOSBackend(BootBackend):
                     f"command: {' '.join(full)}",
                     f"exit code: {completed.returncode}",
                     detail,
-                    "on Apple Silicon the Startup Security Utility controls which systems may be started",
+                    "on Apple Silicon the Startup Security Utility "
+                    "controls which systems may be started",
                 ),
             )
         return OperationResult(

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 class BootError(Exception):
@@ -31,9 +30,9 @@ class BootTarget:
     """A boot target as reported by a platform backend."""
 
     title: str
-    identifier: Optional[str] = None
+    identifier: str | None = None
     path: tuple[str, ...] = ()
-    path_ids: tuple[Optional[str], ...] = ()
+    path_ids: tuple[str | None, ...] = ()
     kind: str = "os"
     source: str = ""
     selectable: bool = True

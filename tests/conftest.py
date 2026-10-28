@@ -8,8 +8,8 @@ attempt to run a reboot or shutdown command into a test failure.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
 
 import pytest
 
@@ -38,12 +38,12 @@ class FakeRunner:
 
     def __init__(
         self,
-        results: Optional[Dict[str, subprocess.CompletedProcess]] = None,
+        results: dict[str, subprocess.CompletedProcess] | None = None,
         returncode: int = 0,
         stdout: str = "",
         stderr: str = "",
     ) -> None:
-        self.calls: List[List[str]] = []
+        self.calls: list[list[str]] = []
         self.results = results or {}
         self.returncode = returncode
         self.stdout = stdout
@@ -59,7 +59,7 @@ class FakeRunner:
         return subprocess.CompletedProcess(argv, self.returncode, self.stdout, self.stderr)
 
     @property
-    def commands(self) -> List[str]:
+    def commands(self) -> list[str]:
         return [" ".join(call) for call in self.calls]
 
     def reset(self) -> None:

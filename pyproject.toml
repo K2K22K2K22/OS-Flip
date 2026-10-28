@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "os-flip"
+version = "2.0.0"
+description = "Inspect and switch boot targets on Linux, Windows and macOS"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "AK", email = "ak2k22k2k22@gmail.com" }]
+keywords = ["grub", "bcdedit", "startup-disk", "boot", "dual-boot"]
+dependencies = []
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: System Administrators",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Boot",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/K2K22K2K22/OS-Flip"
+Source = "https://github.com/K2K22K2K22/OS-Flip"
+Issues = "https://github.com/K2K22K2K22/OS-Flip/issues"
+
+[project.scripts]
+os-flip = "os_flip.__main__:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.setuptools]
+packages = ["os_flip", "os_flip.backends"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]

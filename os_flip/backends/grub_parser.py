@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 HEADER_PATTERN = re.compile(r"^(menuentry|submenu)\s+(.*)$")
 
-Token = Tuple[str, bool]
+Token = tuple[str, bool]
 
 
 @dataclass(frozen=True)
@@ -22,11 +21,11 @@ class GrubEntry:
     """A menuentry or submenu found in a GRUB configuration."""
 
     title: str
-    entry_id: Optional[str]
+    entry_id: str | None
     kind: str
     entry_type: str
-    path: Tuple[str, ...]
-    path_ids: Tuple[Optional[str], ...]
+    path: tuple[str, ...]
+    path_ids: tuple[str | None, ...]
     source: str
     line_number: int
 
@@ -35,10 +34,10 @@ class GrubEntry:
         return self.kind == "submenu"
 
 
-def tokenize(text: str) -> List[Token]:
+def tokenize(text: str) -> list[Token]:
     """Split a command header into tokens, remembering which ones were quoted."""
-    tokens: List[Token] = []
-    buffer: List[str] = []
+    tokens: list[Token] = []
+    buffer: list[str] = []
     in_quotes = False
     quote = ""
     escaped = False
@@ -75,7 +74,7 @@ def tokenize(text: str) -> List[Token]:
     return tokens
 
 
-def find_identifier(tokens: List[Token]) -> Optional[str]:
+def find_identifier(tokens: list[Token]) -> str | None:
     """Return the stable GRUB identifier of a header, when it carries one."""
     for index, (token, _) in enumerate(tokens):
         if token == "--id" and index + 1 < len(tokens):
@@ -116,11 +115,11 @@ def brace_delta(line: str) -> int:
     return delta
 
 
-def parse_grub_config(text: str, source: str = "<config>") -> Tuple[List[GrubEntry], List[str]]:
+def parse_grub_config(text: str, source: str = "<config>") -> tuple[list[GrubEntry], list[str]]:
     """Parse a GRUB configuration into entries and diagnostics."""
-    entries: List[GrubEntry] = []
-    warnings: List[str] = []
-    stack: List[dict] = []
+    entries: list[GrubEntry] = []
+    warnings: list[str] = []
+    stack: list[dict] = []
     depth = 0
 
     for number, line in enumerate(text.splitlines(), start=1):
@@ -137,7 +136,9 @@ def parse_grub_config(text: str, source: str = "<config>") -> Tuple[List[GrubEnt
                 warnings.append(f"{source}:{number}: title of {keyword} could not be read")
                 title = ""
             if "{" not in remainder:
-                warnings.append(f"{source}:{number}: {keyword} without an opening brace was ignored")
+                warnings.append(
+                    f"{source}:{number}: {keyword} without an opening brace was ignored"
+                )
                 depth += brace_delta(line)
                 _close_finished(stack, depth, entries, source)
                 continue
@@ -152,7 +153,9 @@ def parse_grub_config(text: str, source: str = "<config>") -> Tuple[List[GrubEnt
                     "line": number,
                     "entry_type": "unknown",
                     "path": tuple(item["title"] for item in stack if item["kind"] == "submenu"),
-                    "path_ids": tuple(item["identifier"] for item in stack if item["kind"] == "submenu"),
+                    "path_ids": tuple(
+                        item["identifier"] for item in stack if item["kind"] == "submenu"
+                    ),
                 }
             )
         else:
@@ -174,7 +177,7 @@ def parse_grub_config(text: str, source: str = "<config>") -> Tuple[List[GrubEnt
     return entries, warnings
 
 
-def _close_finished(stack: List[dict], depth: int, entries: List[GrubEntry], source: str) -> None:
+def _close_finished(stack: list[dict], depth: int, entries: list[GrubEntry], source: str) -> None:
     while stack and depth < stack[-1]["depth"]:
         block = stack.pop()
         entries.append(_build_entry(block, source))

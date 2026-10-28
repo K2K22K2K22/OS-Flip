@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 from . import __version__, power, ui
 from .backends import BootBackend, get_backend
@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     arguments = parser.parse_args(argv)
     ui.configure_color(False if arguments.no_color else None)
@@ -92,7 +92,7 @@ def _list(backend: BootBackend) -> int:
     return EXIT_OK
 
 
-def _print_targets(backend: BootBackend, targets: List[BootTarget]) -> None:
+def _print_targets(backend: BootBackend, targets: list[BootTarget]) -> None:
     current = None
     try:
         current = backend.current_default()
@@ -187,7 +187,7 @@ def _is_privileged(backend: BootBackend) -> bool:
     return hasattr(os, "geteuid") and os.geteuid() == 0
 
 
-def resolve_target(targets: List[BootTarget], selector: str) -> BootTarget:
+def resolve_target(targets: list[BootTarget], selector: str) -> BootTarget:
     """Resolve a selector into exactly one boot target."""
     text = selector.strip()
     if not text:
@@ -296,7 +296,7 @@ def _menu_os_prober(backend: BootBackend) -> int:
     return EXIT_OK if result.ok else EXIT_ERROR
 
 
-def _ask_target(targets: List[BootTarget]) -> Optional[BootTarget]:
+def _ask_target(targets: list[BootTarget]) -> BootTarget | None:
     try:
         answer = input("Select a boot target by number or identifier: ").strip()
     except (EOFError, KeyboardInterrupt):

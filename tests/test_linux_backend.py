@@ -104,7 +104,9 @@ def test_saved_default_is_read_from_the_grub_environment(tmp_path):
         }
     )
     tools = {"grub-editenv": "/usr/sbin/grub-editenv"}
-    backend, _, _ = build_backend(tmp_path, runner=runner, which=tools, config_text="GRUB_DEFAULT=saved\n")
+    backend, _, _ = build_backend(
+        tmp_path, runner=runner, which=tools, config_text="GRUB_DEFAULT=saved\n"
+    )
 
     current = backend.current_default()
 
@@ -286,7 +288,9 @@ def test_regeneration_command_uses_grub2_mkconfig_on_fedora(tmp_path):
 
 
 def test_regeneration_command_uses_grub_mkconfig_on_arch(tmp_path):
-    backend, _, grub_cfg = build_backend(tmp_path, which={"grub-mkconfig": "/usr/sbin/grub-mkconfig"})
+    backend, _, grub_cfg = build_backend(
+        tmp_path, which={"grub-mkconfig": "/usr/sbin/grub-mkconfig"}
+    )
 
     assert backend._regeneration_command() == ["grub-mkconfig", "-o", str(grub_cfg)]
 
@@ -330,9 +334,16 @@ def test_missing_default_setting_leaves_the_current_default_unknown(tmp_path):
 
 def test_saved_default_is_not_overwritten_when_the_entry_is_unknown(tmp_path):
     runner = FakeRunner(
-        {"grub-editenv list": completed(["grub-editenv", "list"], stdout="saved_entry=unknown-id\n")}
+        {
+            "grub-editenv list": completed(
+                ["grub-editenv", "list"], stdout="saved_entry=unknown-id\n"
+            )
+        }
     )
-    tools = {"grub-editenv": "/usr/sbin/grub-editenv", "grub-set-default": "/usr/sbin/grub-set-default"}
+    tools = {
+        "grub-editenv": "/usr/sbin/grub-editenv",
+        "grub-set-default": "/usr/sbin/grub-set-default",
+    }
     backend, default_config, _ = build_backend(
         tmp_path, runner=runner, which=tools, config_text="GRUB_DEFAULT=saved\n"
     )

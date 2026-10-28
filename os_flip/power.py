@@ -9,14 +9,14 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
-from typing import Callable, List, Optional
+from typing import Callable
 
 from .model import OperationResult, UnsupportedOperation
 
 Runner = Callable[..., subprocess.CompletedProcess]
 
 
-def reboot_command() -> List[str]:
+def reboot_command() -> list[str]:
     """Return the platform specific reboot command."""
     system = platform.system()
     if system == "Linux":

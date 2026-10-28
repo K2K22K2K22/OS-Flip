@@ -82,7 +82,9 @@ def test_reboot_request_is_only_issued_when_asked(monkeypatch):
 
 def test_failed_reboot_request_is_reported(monkeypatch):
     monkeypatch.setattr(power.platform, "system", lambda: "Linux")
-    runner = FakeRunner({"systemctl": completed(["systemctl", "reboot"], returncode=1, stderr="denied")})
+    runner = FakeRunner(
+        {"systemctl": completed(["systemctl", "reboot"], returncode=1, stderr="denied")}
+    )
 
     result = power.request_reboot(runner)
 

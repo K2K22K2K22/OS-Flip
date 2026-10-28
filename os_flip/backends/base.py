@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ..model import BootTarget, Capabilities, OperationResult, UnsupportedOperation
 
 
@@ -20,7 +18,7 @@ class BootBackend:
     def list_targets(self) -> list[BootTarget]:
         raise NotImplementedError
 
-    def current_default(self) -> Optional[BootTarget]:
+    def current_default(self) -> BootTarget | None:
         raise NotImplementedError
 
     def set_default(self, target: BootTarget, dry_run: bool = False) -> OperationResult:

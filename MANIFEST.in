@@ -1,0 +1,4 @@
+include LICENSE
+include CHANGELOG.md
+recursive-include tests *.py
+recursive-include tests/fixtures *.cfg

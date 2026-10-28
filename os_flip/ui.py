@@ -7,7 +7,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import TextIO
 
 RESET = "\033[0m"
 COLORS = {
@@ -17,10 +17,10 @@ COLORS = {
     "red": "\033[31m",
 }
 
-_color_enabled: Optional[bool] = None
+_color_enabled: bool | None = None
 
 
-def configure_color(enabled: Optional[bool] = None) -> None:
+def configure_color(enabled: bool | None = None) -> None:
     """Force colors on or off. Without an argument colors follow the terminal."""
     global _color_enabled
     if enabled is None:
@@ -51,7 +51,7 @@ def log_path() -> Path:
     return Path(f"/tmp/os_flip_{user}.log")
 
 
-def log(message: str) -> Optional[Path]:
+def log(message: str) -> Path | None:
     """Append a line to the log file. Logging never breaks the application."""
     path = log_path()
     try:

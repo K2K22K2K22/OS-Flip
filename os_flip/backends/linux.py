@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable
 
 from ..model import (
     AmbiguousTarget,
@@ -79,13 +79,13 @@ class LinuxBackend(BootBackend):
 
     def __init__(
         self,
-        default_config: Optional[Path] = None,
-        grub_config: Optional[Path] = None,
-        grubenv: Optional[Path] = None,
-        bls_directory: Optional[Path] = None,
-        runner: Optional[Runner] = None,
-        which: Callable[[str], Optional[str]] = shutil.which,
-        is_root: Optional[Callable[[], bool]] = None,
+        default_config: Path | None = None,
+        grub_config: Path | None = None,
+        grubenv: Path | None = None,
+        bls_directory: Path | None = None,
+        runner: Runner | None = None,
+        which: Callable[[str], str | None] = shutil.which,
+        is_root: Callable[[], bool] | None = None,
     ) -> None:
         self.default_config = Path(default_config) if default_config else DEFAULT_CONFIG
         self._grub_config = Path(grub_config) if grub_config else None
@@ -94,11 +94,11 @@ class LinuxBackend(BootBackend):
         self._run = runner or subprocess.run
         self._which = which
         self._is_root = is_root
-        self.warnings: List[str] = []
+        self.warnings: list[str] = []
 
     # paths -----------------------------------------------------------------
 
-    def grub_config_path(self) -> Optional[Path]:
+    def grub_config_path(self) -> Path | None:
         if self._grub_config is not None:
             return self._grub_config
         for candidate in GRUB_CONFIG_CANDIDATES:
@@ -110,7 +110,7 @@ class LinuxBackend(BootBackend):
                 return candidate
         return None
 
-    def grubenv_path(self) -> Optional[Path]:
+    def grubenv_path(self) -> Path | None:
         if self._grubenv is not None:
             return self._grubenv
         for candidate in GRUBENV_CANDIDATES:
@@ -159,7 +159,7 @@ class LinuxBackend(BootBackend):
 
     # reading ---------------------------------------------------------------
 
-    def list_targets(self) -> List[BootTarget]:
+    def list_targets(self) -> list[BootTarget]:
         config = self.grub_config_path()
         if config is None or not config.exists():
             raise BootError(
@@ -172,7 +172,7 @@ class LinuxBackend(BootBackend):
             raise BootError(f"could not read {config}: {error}") from error
 
         entries, warnings = parse_grub_config(text, str(config))
-        targets: List[BootTarget] = []
+        targets: list[BootTarget] = []
         for entry in entries:
             targets.append(
                 BootTarget(
@@ -190,8 +190,8 @@ class LinuxBackend(BootBackend):
         self.warnings = warnings
         return targets
 
-    def _bls_targets(self) -> List[BootTarget]:
-        targets: List[BootTarget] = []
+    def _bls_targets(self) -> list[BootTarget]:
+        targets: list[BootTarget] = []
         directory = self._bls_directory
         if not directory.is_dir():
             return targets
@@ -227,7 +227,7 @@ class LinuxBackend(BootBackend):
             )
         return targets
 
-    def current_default(self) -> Optional[BootTarget]:
+    def current_default(self) -> BootTarget | None:
         value = self.read_setting("GRUB_DEFAULT")
         if value is None:
             return None
@@ -238,7 +238,7 @@ class LinuxBackend(BootBackend):
             return self._resolve(saved)
         return self._resolve(value)
 
-    def read_setting(self, name: str) -> Optional[str]:
+    def read_setting(self, name: str) -> str | None:
         try:
             content = self.default_config.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -253,7 +253,7 @@ class LinuxBackend(BootBackend):
             return value
         return None
 
-    def read_saved_entry(self) -> Optional[str]:
+    def read_saved_entry(self) -> str | None:
         command = self._which("grub-editenv") or self._which("grub2-editenv")
         if not command:
             return None
@@ -268,7 +268,7 @@ class LinuxBackend(BootBackend):
                 return line.split("=", 1)[1].strip() or None
         return None
 
-    def _resolve(self, spec: str) -> Optional[BootTarget]:
+    def _resolve(self, spec: str) -> BootTarget | None:
         targets = self.list_targets()
         if spec.isdigit():
             top_level = [target for target in targets if not target.path]
@@ -335,7 +335,8 @@ class LinuxBackend(BootBackend):
 
         if not self.is_root():
             raise PrivilegeError(
-                f"changing the permanent default needs root privileges, run: sudo {self._command_hint()}"
+                "changing the permanent default needs root privileges, "
+                f"run: sudo {self._command_hint()}"
             )
 
         backup = self._backup(config)
@@ -352,11 +353,15 @@ class LinuxBackend(BootBackend):
         if completed.returncode != 0:
             detail = (completed.stderr or completed.stdout or "").strip()
             restored = self._restore(backup, config)
+            if restored:
+                message = "GRUB regeneration failed, the previous configuration was restored"
+            else:
+                message = (
+                    "GRUB regeneration failed, the previous configuration could not be restored"
+                )
             return OperationResult(
                 False,
-                "GRUB regeneration failed, the previous configuration was restored"
-                if restored
-                else "GRUB regeneration failed and the previous configuration could not be restored",
+                message,
                 details=(
                     f"command: {' '.join(command)}",
                     f"exit code: {completed.returncode}",
@@ -370,7 +375,11 @@ class LinuxBackend(BootBackend):
         return OperationResult(
             True,
             f"permanent default set to {target.display_path}",
-            details=(f"identifier used by GRUB: {spec}", f"updated {config}", f"ran: {' '.join(command)}"),
+            details=(
+                f"identifier used by GRUB: {spec}",
+                f"updated {config}",
+                f"ran: {' '.join(command)}",
+            ),
             changed_files=(str(config),),
         )
 
@@ -379,7 +388,8 @@ class LinuxBackend(BootBackend):
         if not command:
             return OperationResult(
                 False,
-                "GRUB_DEFAULT is saved but neither grub-set-default nor grub2-set-default was found",
+                "GRUB_DEFAULT is saved but neither grub-set-default "
+                "nor grub2-set-default was found",
             )
         if dry_run:
             return OperationResult(
@@ -389,7 +399,8 @@ class LinuxBackend(BootBackend):
             )
         if not self.is_root():
             raise PrivilegeError(
-                f"changing the permanent default needs root privileges, run: sudo {self._command_hint()}"
+                "changing the permanent default needs root privileges, "
+                f"run: sudo {self._command_hint()}"
             )
         completed = self._run([command, spec], check=False, capture_output=True, text=True)
         if completed.returncode != 0:
@@ -397,7 +408,11 @@ class LinuxBackend(BootBackend):
             return OperationResult(
                 False,
                 "could not store the saved default",
-                details=(f"command: {command} {spec}", f"exit code: {completed.returncode}", detail),
+                details=(
+                    f"command: {command} {spec}",
+                    f"exit code: {completed.returncode}",
+                    detail,
+                ),
             )
         return OperationResult(
             True,
@@ -423,7 +438,8 @@ class LinuxBackend(BootBackend):
             )
         if not self.is_root():
             raise PrivilegeError(
-                f"scheduling a one time boot needs root privileges, run: sudo {self._command_hint()}"
+                "scheduling a one time boot needs root privileges, "
+                f"run: sudo {self._command_hint()}"
             )
         completed = self._run([command, spec], check=False, capture_output=True, text=True)
         if completed.returncode != 0:
@@ -431,7 +447,11 @@ class LinuxBackend(BootBackend):
             return OperationResult(
                 False,
                 "could not schedule the one time boot",
-                details=(f"command: {command} {spec}", f"exit code: {completed.returncode}", detail),
+                details=(
+                    f"command: {command} {spec}",
+                    f"exit code: {completed.returncode}",
+                    detail,
+                ),
             )
         return OperationResult(
             True,
@@ -444,7 +464,8 @@ class LinuxBackend(BootBackend):
         if not self._which("os-prober"):
             return OperationResult(
                 False,
-                "os-prober is not installed, install it first if other operating systems should be listed",
+                "os-prober is not installed, install it first "
+                "if other operating systems should be listed",
             )
         config = self.default_config
         if not config.exists():
@@ -456,7 +477,8 @@ class LinuxBackend(BootBackend):
         if command is None:
             return OperationResult(
                 False,
-                "no supported GRUB regeneration command was found, the configuration was not changed",
+                "no supported GRUB regeneration command was found, "
+                "the configuration was not changed",
             )
         if dry_run:
             return OperationResult(
@@ -507,14 +529,14 @@ class LinuxBackend(BootBackend):
     def _grub_spec(self, target: BootTarget) -> str:
         if not target.path:
             return target.identifier or target.title
-        components: List[str] = []
+        components: list[str] = []
         identifiers = list(target.path_ids) + [None] * (len(target.path) - len(target.path_ids))
         for title, identifier in zip(target.path, identifiers):
             components.append(identifier or title)
         components.append(target.identifier or target.title)
         return ">".join(component.replace(">", ">>") for component in components)
 
-    def _regeneration_command(self) -> Optional[List[str]]:
+    def _regeneration_command(self) -> list[str] | None:
         if self._which("update-grub"):
             return ["update-grub"]
         for name in ("grub2-mkconfig", "grub-mkconfig"):
@@ -568,9 +590,9 @@ class LinuxBackend(BootBackend):
         return "os-flip"
 
 
-def _split_path(spec: str) -> List[str]:
-    parts: List[str] = []
-    current: List[str] = []
+def _split_path(spec: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
     index = 0
     while index < len(spec):
         char = spec[index]
