@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install OS-Flip and the test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Run the test suite
+        run: python -m pytest -q
+
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the linter
+        run: python -m pip install --upgrade pip && python -m pip install ruff
+      - name: Check the source
+        run: ruff check .
+
+  package:
+    name: build and check the distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the build tools
+        run: python -m pip install --upgrade pip build twine
+      - name: Build the source distribution and the wheel
+        run: python -m build
+      - name: Check the metadata
+        run: twine check dist/*
+      - name: Install the wheel in a clean environment
+        run: |
+          python -m venv /tmp/os-flip-check
+          /tmp/os-flip-check/bin/python -m pip install --upgrade pip
+          /tmp/os-flip-check/bin/python -m pip install dist/*.whl
+          /tmp/os-flip-check/bin/os-flip --version
+          /tmp/os-flip-check/bin/os-flip --help
